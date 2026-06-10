@@ -15,24 +15,37 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import ru.lesnoy40rt77.weatheradvisor.data.CityRepository
+import ru.lesnoy40rt77.weatheradvisor.data.local.AppDatabase
 import ru.lesnoy40rt77.weatheradvisor.model.City
 
 @Composable
 fun CitySearchScreen() {
-    val cityRepository = remember { CityRepository() }
+    val context = LocalContext.current
+
+    val cityRepository = remember {
+        val database = AppDatabase.getDatabase(context)
+        CityRepository(database.cityDao())
+    }
 
     var query by remember { mutableStateOf("") }
     var selectedCity by remember { mutableStateOf<City?>(null) }
+    var cities by remember { mutableStateOf<List<City>>(emptyList()) }
 
-    val cities = remember(query) {
-        cityRepository.searchCities(query)
+    LaunchedEffect(Unit) {
+        cityRepository.seedIfEmpty()
+    }
+
+    LaunchedEffect(query) {
+        cities = cityRepository.searchCities(query)
     }
 
     Column(
