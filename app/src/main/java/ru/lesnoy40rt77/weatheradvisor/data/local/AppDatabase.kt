@@ -24,7 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "weather_advisor.db"
-                ).build()
+                )
+                    .createFromAsset("database/cities.db")
+                    .build()
 
                 INSTANCE = instance
                 instance

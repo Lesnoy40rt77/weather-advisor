@@ -40,10 +40,6 @@ fun CitySearchScreen() {
     var selectedCity by remember { mutableStateOf<City?>(null) }
     var cities by remember { mutableStateOf<List<City>>(emptyList()) }
 
-    LaunchedEffect(Unit) {
-        cityRepository.seedIfEmpty()
-    }
-
     LaunchedEffect(query) {
         cities = cityRepository.searchCities(query)
     }
