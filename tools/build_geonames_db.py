@@ -606,6 +606,8 @@ def create_database(
 
         inserted += 1
 
+    cursor.execute("PRAGMA user_version = 1")
+
     connection.commit()
     connection.close()
 
