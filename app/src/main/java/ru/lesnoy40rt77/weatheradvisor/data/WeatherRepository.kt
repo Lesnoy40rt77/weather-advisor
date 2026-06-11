@@ -10,6 +10,18 @@ class WeatherRepository(
 ) {
 
     suspend fun getWeather(city: City): WeatherInfo {
+        return getWeatherByCoordinates(
+            latitude = city.latitude,
+            longitude = city.longitude,
+            displayCityName = city.name
+        )
+    }
+
+    suspend fun getWeatherByCoordinates(
+        latitude: Double,
+        longitude: Double,
+        displayCityName: String? = null
+    ): WeatherInfo {
         val apiKey = BuildConfig.OPENWEATHER_API_KEY
 
         if (apiKey.isBlank()) {
@@ -17,13 +29,17 @@ class WeatherRepository(
         }
 
         val response = apiService.getCurrentWeather(
-            latitude = city.latitude,
-            longitude = city.longitude,
+            latitude = latitude,
+            longitude = longitude,
             apiKey = apiKey
         )
 
+        val cityName = displayCityName
+            ?: response.name.takeIf { it.isNotBlank() }
+            ?: "Моё местоположение"
+
         return WeatherInfo(
-            cityName = city.name,
+            cityName = cityName,
             temperature = response.main.temp,
             feelsLike = response.main.feelsLike,
             description = response.weather.firstOrNull()?.description ?: "Нет описания",

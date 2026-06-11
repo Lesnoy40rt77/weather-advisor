@@ -24,6 +24,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Button
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.core.content.ContextCompat
+import ru.lesnoy40rt77.weatheradvisor.data.LocationRepository
 import ru.lesnoy40rt77.weatheradvisor.data.CityRepository
 import ru.lesnoy40rt77.weatheradvisor.data.WeatherRepository
 import ru.lesnoy40rt77.weatheradvisor.data.local.AppDatabase
@@ -46,6 +56,10 @@ fun CitySearchScreen() {
         WeatherRepository(OpenWeatherApiService.create())
     }
 
+    val locationRepository = remember {
+        LocationRepository(context)
+    }
+
     var query by remember { mutableStateOf("") }
     var selectedCity by remember { mutableStateOf<City?>(null) }
     var cities by remember { mutableStateOf<List<City>>(emptyList()) }
@@ -54,6 +68,17 @@ fun CitySearchScreen() {
     var advices by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoadingWeather by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var locationRequestId by remember { mutableIntStateOf(0) }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            locationRequestId++
+        } else {
+            errorMessage = "Без разрешения на местоположение нельзя получить погоду рядом с тобой."
+        }
+    }
 
     LaunchedEffect(query) {
         cities = cityRepository.searchCities(query)
@@ -78,6 +103,33 @@ fun CitySearchScreen() {
         }
     }
 
+    LaunchedEffect(locationRequestId) {
+        if (locationRequestId == 0) return@LaunchedEffect
+
+        isLoadingWeather = true
+        errorMessage = null
+        selectedCity = null
+        weatherInfo = null
+        advices = emptyList()
+
+        try {
+            val location = locationRepository.getCurrentLocation()
+
+            val loadedWeather = weatherRepository.getWeatherByCoordinates(
+                latitude = location.latitude,
+                longitude = location.longitude,
+                displayCityName = "Моё местоположение"
+            )
+
+            weatherInfo = loadedWeather
+            advices = AdviceGenerator.generate(loadedWeather)
+        } catch (exception: Exception) {
+            errorMessage = exception.message ?: "Не удалось получить погоду по местоположению"
+        } finally {
+            isLoadingWeather = false
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -97,6 +149,28 @@ fun CitySearchScreen() {
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                val permission = Manifest.permission.ACCESS_COARSE_LOCATION
+
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    permission
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    locationRequestId++
+                } else {
+                    locationPermissionLauncher.launch(permission)
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Погода по моему местоположению")
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
