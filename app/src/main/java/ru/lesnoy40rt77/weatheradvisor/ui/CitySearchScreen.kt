@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.Button
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.core.content.ContextCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.runtime.mutableIntStateOf
 import ru.lesnoy40rt77.weatheradvisor.data.LocationRepository
 import ru.lesnoy40rt77.weatheradvisor.data.CityRepository
 import ru.lesnoy40rt77.weatheradvisor.data.WeatherRepository
@@ -69,11 +71,13 @@ fun CitySearchScreen() {
     var isLoadingWeather by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var locationRequestId by remember { mutableIntStateOf(0) }
-
     val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (fineGranted || coarseGranted) {
             locationRequestId++
         } else {
             errorMessage = "Без разрешения на местоположение нельзя получить погоду рядом с тобой."
@@ -154,17 +158,25 @@ fun CitySearchScreen() {
 
         Button(
             onClick = {
-                val permission = Manifest.permission.ACCESS_COARSE_LOCATION
-
-                val hasPermission = ContextCompat.checkSelfPermission(
+                val fineGranted = ContextCompat.checkSelfPermission(
                     context,
-                    permission
+                    Manifest.permission.ACCESS_FINE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
 
-                if (hasPermission) {
+                val coarseGranted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (fineGranted || coarseGranted) {
                     locationRequestId++
                 } else {
-                    locationPermissionLauncher.launch(permission)
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth()
