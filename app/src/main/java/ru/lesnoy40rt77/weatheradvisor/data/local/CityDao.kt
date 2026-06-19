@@ -18,16 +18,13 @@ interface CityDao {
         """
         SELECT * FROM cities
         WHERE searchName LIKE :prefixQuery
-           OR searchName LIKE :wordQuery
         ORDER BY
             CASE WHEN countryCode = 'RU' THEN 0 ELSE 1 END,
-            CASE WHEN searchName LIKE :prefixQuery THEN 0 ELSE 1 END,
             population DESC
-        LIMIT 30
+        LIMIT 20
         """
     )
     suspend fun searchCities(
-        prefixQuery: String,
-        wordQuery: String
+        prefixQuery: String
     ): List<CityEntity>
 }

@@ -15,32 +15,8 @@ class CityRepository(
         }
 
         return cityDao.searchCities(
-            prefixQuery = "$normalizedQuery%",
-            wordQuery = "% $normalizedQuery%"
+            prefixQuery = "$normalizedQuery%"
         ).map { it.toCity() }
-    }
-
-    private fun createCity(
-        geonameId: Int,
-        name: String,
-        countryName: String,
-        countryCode: String,
-        adminName: String?,
-        latitude: Double,
-        longitude: Double,
-        population: Int
-    ): CityEntity {
-        return CityEntity(
-            geonameId = geonameId,
-            name = name,
-            countryName = countryName,
-            countryCode = countryCode,
-            adminName = adminName,
-            latitude = latitude,
-            longitude = longitude,
-            population = population,
-            searchName = normalize(name)
-        )
     }
 
     private fun CityEntity.toCity(): City {

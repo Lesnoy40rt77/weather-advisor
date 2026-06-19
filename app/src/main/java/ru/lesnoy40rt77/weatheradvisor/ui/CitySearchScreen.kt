@@ -34,6 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import kotlinx.coroutines.delay
 import androidx.core.content.ContextCompat
 import ru.lesnoy40rt77.weatheradvisor.data.CityRepository
 import ru.lesnoy40rt77.weatheradvisor.data.LocationRepository
@@ -88,11 +91,21 @@ fun CitySearchScreen() {
     }
 
     LaunchedEffect(query, selectedCity) {
-        cities = if (selectedCity == null) {
-            cityRepository.searchCities(query)
-        } else {
-            emptyList()
+        if (selectedCity != null) {
+            cities = emptyList()
+            return@LaunchedEffect
         }
+
+        val trimmedQuery = query.trim()
+
+        if (trimmedQuery.length < 2) {
+            cities = emptyList()
+            return@LaunchedEffect
+        }
+
+        delay(250)
+
+        cities = cityRepository.searchCities(trimmedQuery)
     }
 
     LaunchedEffect(selectedCity) {
@@ -146,7 +159,9 @@ fun CitySearchScreen() {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         item {
             Text(
