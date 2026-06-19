@@ -1,5 +1,9 @@
 package ru.lesnoy40rt77.weatheradvisor.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,34 +13,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.material3.Button
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.core.content.ContextCompat
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.runtime.mutableIntStateOf
-import ru.lesnoy40rt77.weatheradvisor.data.LocationRepository
 import ru.lesnoy40rt77.weatheradvisor.data.CityRepository
+import ru.lesnoy40rt77.weatheradvisor.data.LocationRepository
 import ru.lesnoy40rt77.weatheradvisor.data.WeatherRepository
 import ru.lesnoy40rt77.weatheradvisor.data.local.AppDatabase
 import ru.lesnoy40rt77.weatheradvisor.data.remote.OpenWeatherApiService
@@ -70,7 +67,9 @@ fun CitySearchScreen() {
     var advices by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoadingWeather by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
     var locationRequestId by remember { mutableIntStateOf(0) }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -84,8 +83,12 @@ fun CitySearchScreen() {
         }
     }
 
-    LaunchedEffect(query) {
-        cities = cityRepository.searchCities(query)
+    LaunchedEffect(query, selectedCity) {
+        cities = if (selectedCity == null) {
+            cityRepository.searchCities(query)
+        } else {
+            emptyList()
+        }
     }
 
     LaunchedEffect(selectedCity) {
@@ -113,6 +116,8 @@ fun CitySearchScreen() {
         isLoadingWeather = true
         errorMessage = null
         selectedCity = null
+        query = ""
+        cities = emptyList()
         weatherInfo = null
         advices = emptyList()
 
@@ -134,101 +139,224 @@ fun CitySearchScreen() {
         }
     }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "Погодный советник",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            label = { Text("Введите город") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                val fineGranted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-
-                val coarseGranted = ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-
-                if (fineGranted || coarseGranted) {
-                    locationRequestId++
-                } else {
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Погода по моему местоположению")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        selectedCity?.let { city ->
+        item {
             Text(
-                text = "Выбран город: ${city.displayName}",
-                style = MaterialTheme.typography.bodyLarge
+                text = "Погодный советник",
+                style = MaterialTheme.typography.headlineMedium
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+            Spacer(modifier = Modifier.height(8.dp))
 
-        if (isLoadingWeather) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        errorMessage?.let { message ->
             Text(
-                text = "Ошибка: $message",
-                color = MaterialTheme.colorScheme.error,
+                text = "Выбери город из локальной базы или получи погоду по местоположению.",
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = query,
+                onValueChange = { newValue ->
+                    query = newValue
+                    selectedCity = null
+                    errorMessage = null
+                    weatherInfo = null
+                    advices = emptyList()
+                },
+                label = { Text("Введите город") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = {
+                    val fineGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    val coarseGranted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (fineGranted || coarseGranted) {
+                        locationRequestId++
+                    } else {
+                        locationPermissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            )
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Погода по моему местоположению")
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        weatherInfo?.let { weather ->
-            WeatherCard(
-                weather = weather,
-                advices = advices
-            )
+        selectedCity?.let { city ->
+            item {
+                SelectedCityCard(
+                    city = city,
+                    onClear = {
+                        selectedCity = null
+                        query = ""
+                        weatherInfo = null
+                        advices = emptyList()
+                        errorMessage = null
+                    }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
 
-        LazyColumn {
+        if (isLoadingWeather) {
+            item {
+                LoadingCard()
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        errorMessage?.let { message ->
+            item {
+                ErrorCard(message = message)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        weatherInfo?.let { weather ->
+            item {
+                WeatherCard(
+                    weather = weather,
+                    advices = advices
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+
+        if (cities.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Найденные города",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             items(cities) { city ->
                 CityItem(
                     city = city,
                     onClick = {
                         selectedCity = city
                         query = city.name
+                        cities = emptyList()
                     }
                 )
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Данные о городах: GeoNames. Данные о погоде: OpenWeather.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectedCityCard(
+    city: City,
+    onClear: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                text = "Выбран город",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Text(
+                text = city.displayName,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onClear,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Выбрать другой город")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            CircularProgressIndicator()
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Загружаем актуальную погоду...",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun ErrorCard(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Ошибка",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
@@ -290,6 +418,8 @@ private fun WeatherCard(
                 style = MaterialTheme.typography.bodyLarge
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = "Ощущается как: ${weather.feelsLike.roundToInt()}°C",
                 style = MaterialTheme.typography.bodyMedium
@@ -313,9 +443,11 @@ private fun WeatherCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Советы:",
+                text = "Советы",
                 style = MaterialTheme.typography.titleMedium
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             advices.forEach { advice ->
                 Text(
