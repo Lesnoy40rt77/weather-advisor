@@ -6,11 +6,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -28,6 +30,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -39,6 +42,7 @@ import ru.lesnoy40rt77.weatheradvisor.data.local.AppDatabase
 import ru.lesnoy40rt77.weatheradvisor.data.remote.OpenWeatherApiService
 import ru.lesnoy40rt77.weatheradvisor.domain.AdviceGenerator
 import ru.lesnoy40rt77.weatheradvisor.model.City
+import ru.lesnoy40rt77.weatheradvisor.model.WeatherAssessment
 import ru.lesnoy40rt77.weatheradvisor.model.WeatherInfo
 import kotlin.math.roundToInt
 
@@ -64,7 +68,7 @@ fun CitySearchScreen() {
     var cities by remember { mutableStateOf<List<City>>(emptyList()) }
 
     var weatherInfo by remember { mutableStateOf<WeatherInfo?>(null) }
-    var advices by remember { mutableStateOf<List<String>>(emptyList()) }
+    var assessment by remember { mutableStateOf<WeatherAssessment?>(null) }
     var isLoadingWeather by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -97,12 +101,12 @@ fun CitySearchScreen() {
         isLoadingWeather = true
         errorMessage = null
         weatherInfo = null
-        advices = emptyList()
+        assessment = null
 
         try {
             val loadedWeather = weatherRepository.getWeather(city)
             weatherInfo = loadedWeather
-            advices = AdviceGenerator.generate(loadedWeather)
+            assessment = AdviceGenerator.assess(loadedWeather)
         } catch (exception: Exception) {
             errorMessage = exception.message ?: "Не удалось загрузить погоду"
         } finally {
@@ -119,7 +123,7 @@ fun CitySearchScreen() {
         query = ""
         cities = emptyList()
         weatherInfo = null
-        advices = emptyList()
+        assessment = null
 
         try {
             val location = locationRepository.getCurrentLocation()
@@ -131,7 +135,7 @@ fun CitySearchScreen() {
             )
 
             weatherInfo = loadedWeather
-            advices = AdviceGenerator.generate(loadedWeather)
+            assessment = AdviceGenerator.assess(loadedWeather)
         } catch (exception: Exception) {
             errorMessage = exception.message ?: "Не удалось получить погоду по местоположению"
         } finally {
@@ -166,7 +170,7 @@ fun CitySearchScreen() {
                     selectedCity = null
                     errorMessage = null
                     weatherInfo = null
-                    advices = emptyList()
+                    assessment = null
                 },
                 label = { Text("Введите город") },
                 modifier = Modifier.fillMaxWidth(),
@@ -214,7 +218,7 @@ fun CitySearchScreen() {
                         selectedCity = null
                         query = ""
                         weatherInfo = null
-                        advices = emptyList()
+                        assessment = null
                         errorMessage = null
                     }
                 )
@@ -237,11 +241,14 @@ fun CitySearchScreen() {
             }
         }
 
-        weatherInfo?.let { weather ->
+        val currentWeather = weatherInfo
+        val currentAssessment = assessment
+
+        if (currentWeather != null && currentAssessment != null) {
             item {
                 WeatherCard(
-                    weather = weather,
-                    advices = advices
+                    weather = currentWeather,
+                    assessment = currentAssessment
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -397,7 +404,7 @@ private fun CityItem(
 @Composable
 private fun WeatherCard(
     weather: WeatherInfo,
-    advices: List<String>
+    assessment: WeatherAssessment
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -406,19 +413,49 @@ private fun WeatherCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = weatherEmoji(weather),
+                    style = MaterialTheme.typography.headlineLarge
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = weather.cityName,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Text(
+                        text = "${weather.temperature.roundToInt()}°C, ${weather.description}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             Text(
-                text = weather.cityName,
-                style = MaterialTheme.typography.titleLarge
+                text = "Оценка: ${assessment.score}/100 — ${assessment.title}",
+                style = MaterialTheme.typography.titleMedium
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             Text(
-                text = "${weather.temperature.roundToInt()}°C, ${weather.description}",
-                style = MaterialTheme.typography.bodyLarge
+                text = assessment.summary,
+                style = MaterialTheme.typography.bodyMedium
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Показатели",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "Ощущается как: ${weather.feelsLike.roundToInt()}°C",
@@ -431,14 +468,30 @@ private fun WeatherCard(
             )
 
             Text(
-                text = "Дождь: ${weather.rainVolume} мм",
+                text = "Дождь: ${formatVolume(weather.rainVolume)}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Text(
-                text = "Снег: ${weather.snowVolume} мм",
+                text = "Снег: ${formatVolume(weather.snowVolume)}",
                 style = MaterialTheme.typography.bodyMedium
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Что надеть или взять",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            assessment.outfitTips.forEach { tip ->
+                Text(
+                    text = "— $tip",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -449,12 +502,33 @@ private fun WeatherCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            advices.forEach { advice ->
+            assessment.importantAdvices.forEach { advice ->
                 Text(
                     text = "— $advice",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
+    }
+}
+
+private fun weatherEmoji(weather: WeatherInfo): String {
+    val description = weather.description.lowercase()
+
+    return when {
+        weather.snowVolume > 0.0 || "снег" in description -> "❄️"
+        weather.rainVolume > 0.0 || "дожд" in description -> "☔"
+        "гроза" in description -> "⛈️"
+        "обла" in description || "пасмур" in description -> "☁️"
+        "ясно" in description || "солн" in description -> "☀️"
+        else -> "🌤️"
+    }
+}
+
+private fun formatVolume(value: Double): String {
+    return if (value <= 0.0) {
+        "нет"
+    } else {
+        "${value} мм"
     }
 }
