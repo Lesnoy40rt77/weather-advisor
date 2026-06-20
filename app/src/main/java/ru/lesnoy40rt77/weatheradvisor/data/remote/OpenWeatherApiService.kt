@@ -18,9 +18,11 @@ interface OpenWeatherApiService {
     ): OpenWeatherResponse
 
     companion object {
-        fun create(): OpenWeatherApiService {
+        fun create(
+            baseUrl: String = "https://api.openweathermap.org/"
+        ): OpenWeatherApiService {
             return Retrofit.Builder()
-                .baseUrl("https://api.openweathermap.org/")
+                .baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(OpenWeatherApiService::class.java)

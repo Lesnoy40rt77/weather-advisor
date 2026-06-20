@@ -6,7 +6,8 @@ import ru.lesnoy40rt77.weatheradvisor.model.City
 import ru.lesnoy40rt77.weatheradvisor.model.WeatherInfo
 
 class WeatherRepository(
-    private val apiService: OpenWeatherApiService
+    private val apiService: OpenWeatherApiService,
+    private val apiKey: String = BuildConfig.OPENWEATHER_API_KEY
 ) {
 
     suspend fun getWeather(city: City): WeatherInfo {
@@ -22,8 +23,6 @@ class WeatherRepository(
         longitude: Double,
         displayCityName: String? = null
     ): WeatherInfo {
-        val apiKey = BuildConfig.OPENWEATHER_API_KEY
-
         if (apiKey.isBlank()) {
             error("OpenWeather API key is empty. Add OPENWEATHER_API_KEY to local.properties")
         }
