@@ -325,9 +325,6 @@ fun CitySearchScreen() {
                 }
             }
 
-            item {
-                FooterText()
-            }
         }
     }
 }
@@ -362,13 +359,6 @@ private fun HeroHeader() {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            InfoPill(text = "Локальная база", emoji = "🏙️", modifier = Modifier.weight(1f))
-            InfoPill(text = "Live weather", emoji = "⚡", modifier = Modifier.weight(1f))
-        }
     }
 }
 
@@ -934,34 +924,6 @@ private fun AdviceSection(
 }
 
 @Composable
-private fun InfoPill(
-    text: String,
-    emoji: String,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(text = emoji)
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
 private fun EmptySearchCard(query: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1009,16 +971,6 @@ private fun StartTipsCard() {
             )
         }
     }
-}
-
-@Composable
-private fun FooterText() {
-    Text(
-        text = "Данные о городах: GeoNames. Данные о погоде: OpenWeather.",
-        modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
 }
 
 private data class ComfortColors(
