@@ -37,9 +37,21 @@ android {
         )
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(
+                localProperties.getProperty("RELEASE_STORE_FILE", "weather-advisor-release.jks")
+            )
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
